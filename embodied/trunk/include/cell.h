@@ -42,40 +42,35 @@ class Cell
          * @brief Constructor.
          * @param parent The parent Cell.
          */
-        Cell(Cell * parent = NULL);
+        Cell(Cell * parent = NULL, bool debug = false);
 
         /**
          * @brief Constructor.
          * @param neighbours The neighbors of this Cell.
          * @param parent The parent Cell.
          */
-        Cell(std::map<CELL_SIDE, Cell *> neighbours, Cell * parent = NULL);
-
-        /**
-         * @brief Constructor taking a vector of points.
-         * @param points The vector of points to add to this Cell.
-         */
-        Cell(std::vector<Point> &points);
+        Cell(std::map<CELL_SIDE, Cell *> neighbours, Cell * parent = NULL, bool debug = false);
 
         /**
          * @brief Calculate the potential of the Cell.
+         * @param region The region to calculate.
          * @return A three dimensional vector of potential points.
          */
-        virtual std::vector<std::vector<std::vector<double> > > CalculatePotential() = 0;
+        virtual std::vector<std::vector<std::vector<double> > > CalculatePotential(const std::vector<std::vector<double *> > & region) = 0;
 
         /**
          * @brief Add a Point to the Cell.
          * @param point Point to add to this cell.
          * @return A pointer to the cell the point was added to.
          */
-        virtual Cell * AddPoint(const Point &point) = 0;
+        virtual Cell * AddPoint(Point * point) = 0;
 
         /**
          * @brief Remove a Point from the Cell.
          * @param point Point to remove from this cell.
          * @return A pointer to the cell the point was removed from.
          */
-        virtual Cell * RemovePoint(const Point &point) = 0;
+        virtual Cell * RemovePoint(const Point & point) = 0;
 
         /**
          * @brief Count of the number of Points in this Cell.
@@ -83,9 +78,36 @@ class Cell
          */
         virtual int Count() const = 0;
 
-    private:
+        /**
+         * @brief Return an empty rank 3 vector.
+         * @return An empy rank 3 vector.
+         */
+        std::vector<std::vector<std::vector<double> > > Empty_3_Vector();
+
+        /**
+         * @brief Return the Cell's region.
+         * @return The region the Cell encompasses.
+         */
+        std::vector<std::vector<std::vector<double> > > GetRegion() const;
+
+        /**
+         * @brief Set the Cell's region.
+         * @param region The Cell's new region.
+         */
+        void SetRegion(const std::vector<std::vector<std::vector<double> > > & region);
+
+        /**
+         * @brief Determines if a Cell contains a Point.
+         * @param point The Point to check for containment.
+         * @return true if the Point lies in the region of this Cell.
+         */
+        bool Contains(const Point & point) const;
+
+    protected:
         std::map<CELL_SIDE, Cell *> neighbours;
         Cell *parent;
+        std::vector<std::vector<double *> > region;
+        bool debug;
 };
 
 #endif // CELL_H

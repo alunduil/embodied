@@ -63,6 +63,19 @@ class Point
         double GetMass() const;
 
         /**
+         * @brief Check if this point equals the other point.
+         * @param that The point to check for equivalence to this one.
+         * @return bool true if they are at the same position; false otherwise.
+         * @note This will lead to possible bugs where when a point is transitioning
+         *   from one Cell to another the point that this one is sharing a position
+         *   with (highly unlikely I know) will possibly get removed from the Cell
+         *   when it shouldn't and just disappear.  So if you see disappearing Points
+         *   check here first!  See if this is the case and then think of a better
+         *   way of doing this.  Basically, solve collisions for me :).
+         */
+        bool operator==(const Point & that) const;
+
+        /**
          * @brief Stream extraction operator.
          * @param in The input stream to read from.
          * @param that That Point to read into.
@@ -76,3 +89,4 @@ class Point
 };
 
 #endif // POINT_H
+// kate: indent-mode cstyle; space-indent on; indent-width 4;

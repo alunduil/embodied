@@ -18,54 +18,54 @@
 
 */
 
-#ifndef POINTS_H
-#define POINTS_H
+#ifndef SPACE_H
+#define SPACE_H
 
-#include <list>
+#include <set>
 
 #include <../include/cell.h>
 
-class Points : public Cell
+class Space : public Cell
 {
     public:
         /**
          * @brief Constructor.
-         * @param max The maximum points in this set.
+         * @param max The maximum number of Points in child Points sets.
+         * @param parent The parent of this Cell.
          */
-        explicit Points(const int &max, Cell * parent = NULL, bool debug = false);
+        Space(const int & max, Cell * parent = NULL, bool debug = false);
 
         /**
-         * @brief Count of the number of points in this set.
-         * @return The number of points in the set.
+         * @brief Count the number of particles in this Space.
+         * @return The number of points in this Space.
          */
         virtual int Count() const;
 
         /**
-         * @brief Remove the specified point from this set.
+         * @brief Remove the Point from the Space.
          * @param point The point to remove.
-         * @return The Cell we are after this removal.
+         * @return A pointer to the resulting Cell.
          */
         virtual Cell* RemovePoint(const Point& point);
 
         /**
-         * @brief Add the specified point to this set.
+         * @brief Add the Point to the Space.
          * @param point The point to add.
-         * @post The return pointer may not match the caller.
-         * @return The Cell we after this removal.
+         * @return A pointer to the resulting Cell.
          */
         virtual Cell* AddPoint(Point * point);
 
         /**
-         * @brief Calculate the potential of this set.
+         * @brief Calculate the Potential for this Space.
          * @param region The region to calculate the potential for.
-         * @return The potential array for our points.
+         * @return The potential field for this Space.
          */
         virtual std::vector<std::vector<std::vector<double> > > CalculatePotential(const std::vector<std::vector<double *> > & region);
 
     private:
-        std::list<Point *> points;
-        int max;
+        int max_points;
+        std::set<Cell *> children;
 };
 
-#endif // POINTS_H
+#endif // SPACE_H
 // kate: indent-mode cstyle; space-indent on; indent-width 4;
