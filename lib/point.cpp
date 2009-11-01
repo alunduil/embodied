@@ -25,6 +25,16 @@ Point::Point(double mass, double x, double y, double z)
 {
 }
 
+bool Point::operator==(const Point & that) const
+{
+    return this->x == that.x && this->y == that.y && this->z == that.z;
+}
+
+boost::tuple<double, double, double> Point::GetPosition() const
+{
+    return boost::tuple<double, double, double>(this->x, this->y, this->z);
+}
+
 std::istream & operator>>(std::istream & in, Point & that)
 {
     in >> that.mass >> that.x >> that.y >> that.z;

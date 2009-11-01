@@ -45,6 +45,10 @@ class Embodied
 
     private:
         Cell *space;
+        int max_points;
+        std::vector<std::vector<double *> > region;
+        bool debug;
+        bool verbose;
 
         /**
          * @brief Parse Flag Options.
@@ -57,9 +61,10 @@ class Embodied
         /**
          * @brief Parse Region of Interest Parameter.
          * @param roi The region of interest string.
+         * @param description The description of the parameters.
          * @return 2 n-tuples (0 < n <= 3) of points to
          */
-        std::vector<std::vector<double *> > regionOfInterest(const std::string &roi);
+        std::vector<std::vector<double *> > regionOfInterest(const std::string &roi, const boost::program_options::options_description & description);
 
         /**
          * @brief Read in points from istream passed.
@@ -67,6 +72,12 @@ class Embodied
          * @return Vector of points.
          */
         std::vector<Point *> readPoints(std::istream &in);
+
+        /**
+         * @brief Return an empty region of interest.
+         * @return Two points that are both NULL for both values to denote an empty region.
+         */
+        std::vector<std::vector<double *> > emptyRegionOfInterest();
 };
 
 class EmbodiedError

@@ -1,6 +1,6 @@
 /*
     The abstract Cell
-    Copyright (C) <year>  <name of author>
+    Copyright (C) 2009 Alex Brandt
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,9 +19,27 @@
 */
 
 #include "../include/cell.h"
+#include "../include/point.h"
 
-Cell::Cell(Cell * parent)
-        : parent(parent)
+Cell::Cell(Cell * parent, bool debug)
+        : parent(parent), debug(debug)
 {
+}
+
+std::vector<std::vector<std::vector<double> > > Cell::Empty_3_Vector()
+{
+    std::vector<double> innermost;
+    std::vector<std::vector<double> > inner;
+    std::vector<std::vector<std::vector<double> > > tmp;
+    tmp.push_back(inner);
+    tmp.back().push_back(innermost);
+    return tmp;
+}
+
+bool Cell::Contains(const Point & point) const
+{
+    double x = boost::get<0>(point.GetPosition());
+    double y = boost::get<1>(point.GetPosition());
+    double z = boost::get<2>(point.GetPosition());
 }
 // kate: indent-mode cstyle; space-indent on; indent-width 4;
