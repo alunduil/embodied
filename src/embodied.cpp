@@ -64,6 +64,7 @@ Embodied::Embodied(int argc, char *argv[])
     if (variables.count("filename") < 1) points = this->readPoints(std::cin);
     for (int i = 0; i < variables.count("filename"); ++i)
     {
+        DEBUG(variables["filename"].as<std::vector<std::string> >()[i]);
         std::ifstream file(variables["filename"].as<std::vector<std::string> >()[i].c_str());
         std::vector<Point *> tmp = this->readPoints(file);
         for (std::vector<Point *>::iterator j = tmp.begin(); j != tmp.end(); ++j)
@@ -77,14 +78,14 @@ Embodied::Embodied(int argc, char *argv[])
         Cell *tmp = NULL;
         if ((tmp = this->space->AddPoint(*i)) != this->space)
         {
-            VERBOSE("Tree has split!");
+            DEBUG("Tree has split!");
             delete this->space;
             this->space = tmp;
         }
     }
 
 #ifndef NDEBUG
-    DEBUG(variables["region"].as<std::string>());
+    if (variables.count("region") > 0) DEBUG(variables["region"].as<std::string>());
 #endif
     this->region = (variables.count("region") > 0) ? regionOfInterest(variables["region"].as<std::string>(), description) : this->emptyRegionOfInterest();
 }

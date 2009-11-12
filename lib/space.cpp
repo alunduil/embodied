@@ -22,6 +22,7 @@
 
 #include "../include/output.h"
 #include "../include/space.h"
+#include "../include/points.h"
 
 Space::Space(const int & max, Cell * parent, bool debug)
         : Cell(parent, debug), max_points(max)
@@ -30,10 +31,10 @@ Space::Space(const int & max, Cell * parent, bool debug)
 
 int Space::Count() const
 {
-#ifndef NDEBUG
-#warning Stub!  Needs to be implemented!
-    WARNING("Space::Count()", "Stub!  Needs to be implemented!");
-#endif
+    int total = 0;
+    for (std::set<Cell *>::iterator i = this->children.begin(); i != this->children.end(); ++i)
+        total += (*i)->Count();
+    return total;
 }
 
 Cell* Space::RemovePoint(const Point & point)
@@ -46,9 +47,28 @@ Cell* Space::RemovePoint(const Point & point)
 
 Cell* Space::AddPoint(Point * point)
 {
+    bool inserted = false;
     for (std::set<Cell *>::iterator i = this->children.begin(); i != this->children.end(); ++i)
         if ((*i)->Contains(*point))
-            (*i)->AddPoint(point);
+        {
+            Cell * tmp = NULL;
+            if ((tmp = (*i)->AddPoint(point)) != *i)
+            {
+                DEBUG("Tree has split!");
+                delete (*i);
+                this->children.erase(i++);
+                this->children.insert(--i, tmp);
+            }
+            inserted = true;
+            break;
+        }
+    if (!inserted)
+    {
+        Cell * tmp = NULL;
+        tmp = new Points(this->max_points, this, this->debug);
+        this->children.insert(tmp);
+        tmp->AddPoint(point);
+    }
     return this;
 }
 
@@ -64,7 +84,7 @@ std::vector<std::vector<std::vector<double> > > Space::CalculatePotential(const 
      * @note We'll have a bunch of Cells within this one, so why not calculate the potential based on their findings?
      */
     for (std::set<Cell *>::iterator i = this->children.begin(); i != this->children.end(); ++i)
-
+        tmp = (*i)->CalculatePotential(region);
     return tmp;
 }
 // kate: indent-mode cstyle; space-indent on; indent-width 4;
