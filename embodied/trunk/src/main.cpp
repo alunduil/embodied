@@ -1,7 +1,7 @@
 #include <iostream>
 #include <cstdlib>
-#include <embodied.h>
 
+#include "../include/embodied.h"
 #include "../include/output.h"
 
 using namespace std;

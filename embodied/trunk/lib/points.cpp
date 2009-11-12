@@ -51,6 +51,7 @@ Cell* Points::AddPoint(Point* point)
         for (std::list<Point *>::iterator i = this->points.begin(); i != this->points.end(); ++i)
             tmp->AddPoint(*i);
         tmp->AddPoint(point);
+        DEBUG("Tree has split!");
         return tmp;
     }
     this->points.push_back(point);
@@ -62,7 +63,7 @@ std::vector<std::vector<std::vector<double> > > Points::CalculatePotential(const
     std::vector<std::vector<std::vector<double> > > tmp = this->Empty_3_Vector();
 #ifndef NDEBUG
 #warning Stub!  Needs to be implemented!
-    std::cerr << LIGHT_GREEN << __FILE__ << ":" << __LINE__ << ": warning: Points::CalculatePotential() -> Stub!  Needs to be implemented!" << GRAY << std::endl;
+    WARNING("Points::CalculatePotential()", "Stub!  Needs to be implemented!");
 #endif
     /**
      * @todo Actually calculate the potential.
