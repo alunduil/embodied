@@ -18,6 +18,9 @@
 
 */
 
+#include <boost/lexical_cast.hpp>
+#include <ctype.h>
+
 #include "../include/point.h"
 
 Point::Point(double mass, double x, double y, double z)
@@ -30,13 +33,44 @@ bool Point::operator==(const Point & that) const
     return this->x == that.x && this->y == that.y && this->z == that.z;
 }
 
-boost::tuple<double, double, double> Point::GetPosition() const
+std::vector<double> Point::GetPosition() const
 {
-    return boost::tuple<double, double, double>(this->x, this->y, this->z);
+    std::vector<double> ret;
+    ret.push_back(this->x);
+    ret.push_back(this->y);
+    ret.push_back(this->z);
+    return ret;
+}
+
+double Point::GetMass() const
+{
+    return this->mass;
+}
+
+void Point::SetMass(const double & mass)
+{
+    this->mass = mass;
+}
+
+void Point::SetPosition(const double & x, const double & y, const double & z)
+{
+    this->x = x;
+    this->y = y;
+    this->z = z;
 }
 
 std::istream & operator>>(std::istream & in, Point & that)
 {
     in >> that.mass >> that.x >> that.y >> that.z;
+    /**
+     * @note This seems like a terrible dirty hack!
+     */
+    while (!std::isdigit(in.peek()) && !in.eof()) in.get();
+    return in;
+}
+
+std::ostream & operator<<(std::ostream & out, const Point & that)
+{
+    return out << "m: " << that.mass << " r: < " << that.GetPosition()[0] << ", " << that.GetPosition()[1] << ", " << that.GetPosition()[2] << ">";
 }
 // kate: indent-mode cstyle; space-indent on; indent-width 4;

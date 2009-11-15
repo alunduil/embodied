@@ -24,8 +24,9 @@
 #include <boost/program_options.hpp>
 #include <vector>
 
+#include "../include/octtree.h"
+
 class Point;
-class Cell;
 
 class Embodied
 {
@@ -44,11 +45,12 @@ class Embodied
         std::vector<std::vector<std::vector<double> > > CalculatePotential();
 
     private:
-        Cell *space;
+        OctTree * space;
         int max_points;
         std::vector<std::vector<double *> > region;
         bool debug;
         bool verbose;
+        int nsteps;
 
         /**
          * @brief Parse Flag Options.
@@ -65,6 +67,13 @@ class Embodied
          * @return 2 n-tuples (0 < n <= 3) of points to
          */
         std::vector<std::vector<double *> > regionOfInterest(const std::string &roi, const boost::program_options::options_description & description);
+
+        /**
+         * @brief Given a set of points calculate the region they cover.
+         * @param points The set of points.
+         * @return Two 3-tuples with the corners of our region.
+         */
+        std::vector<std::vector<double> > calculateRegion(const std::vector<Point *> & points);
 
         /**
          * @brief Read in points from istream passed.

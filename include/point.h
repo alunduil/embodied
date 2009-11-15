@@ -21,7 +21,7 @@
 #ifndef POINT_H
 #define POINT_H
 
-#include <boost/tuple/tuple.hpp>
+#include <vector>
 #include <istream>
 
 class Point
@@ -42,19 +42,19 @@ class Point
          * @param y The y-coordinate of the point.
          * @param z The z-coordinate of the point.
          */
-        void SetPosition(double x, double y, double z);
+        void SetPosition(const double & x, const double & y, const double & z);
 
         /**
          * @brief Get the Position.
          * @return A 3-tuple with the point's coordinate.
          */
-        boost::tuple<double, double, double> GetPosition() const;
+        std::vector<double> GetPosition() const;
 
         /**
          * @brief Change the Mass.
          * @param mass The mass of the point.
          */
-        void SetMass(double mass);
+        void SetMass(const double & mass);
 
         /**
          * @brief Get the Mass.
@@ -82,6 +82,14 @@ class Point
          * @return A reference to the input stream.
          */
         friend std::istream & operator>>(std::istream & in, Point & that);
+
+        /**
+         * @brief Stream insertion operator.
+         * @param out The output stream to print to.
+         * @param that That Point to print.
+         * @return A reference to the output stream.
+         */
+        friend std::ostream & operator<<(std::ostream & out, const Point & that);
 
     private:
         double x, y, z;
