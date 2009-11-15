@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cstdlib>
+#include <iomanip>
 
 #include "../include/embodied.h"
 #include "../include/output.h"
@@ -30,7 +31,7 @@ int main(int argc, char **argv)
     for (int i = 0; i < potential.size(); ++i)
         for (int j = 0; j < potential[i].size(); ++j)
             for (int k = 0; k < potential[i][j].size(); ++k)
-                cout << "(" << i << "," << j << "," << k << ") " << potential[i][j][k] << endl;
+                cout << "(" << setfill('0') << setw(6) << i << "," << setw(6) << j << "," << setw(6) << k << ") " << scientific << setprecision(14) << potential[i][j][k] << endl;
 
     return EXIT_SUCCESS;
 }

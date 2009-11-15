@@ -61,7 +61,9 @@ class Generator:
 
     def _generatePoint(self):
         point = ""
-        for i in range(4):
+        point += str(random.uniform(0, self._options.max_float))
+        point += " "
+        for i in range(3):
             point += str(random.uniform(self._options.min_float, self._options.max_float))
             point += " "
         return point

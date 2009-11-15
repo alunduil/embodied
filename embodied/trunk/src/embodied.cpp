@@ -22,21 +22,22 @@
 #include <fstream>
 #include <boost/regex.hpp>
 #include <cstdio>
+#include <limits>
+#include <boost/lexical_cast.hpp>
 
 #include "../include/embodied.h"
-#include "../include/cell.h"
-#include "../include/points.h"
-#include "../include/point.h"
 #include "../include/output.h"
+#include "../include/octtree.h"
+#include "../include/point.h"
 
 Embodied::Embodied(int argc, char *argv[])
-        : space(NULL), max_points(50), debug(false), verbose(false)
+        : debug(false), verbose(false), space(NULL), nsteps(100)
 {
     using namespace boost::program_options;
     std::string usage;
     usage += "Usage: ";
     usage += argv[0];
-    usage += " [options] [((x1,y1,z1),(x2,y2,z2))]";
+    usage += " [options] [((x_1,y_1,z_1),(x_2,y_2,z_2))]";
     options_description description(usage);
     variables_map variables;
     try
@@ -67,27 +68,58 @@ Embodied::Embodied(int argc, char *argv[])
         DEBUG(variables["filename"].as<std::vector<std::string> >()[i]);
         std::ifstream file(variables["filename"].as<std::vector<std::string> >()[i].c_str());
         std::vector<Point *> tmp = this->readPoints(file);
-        for (std::vector<Point *>::iterator j = tmp.begin(); j != tmp.end(); ++j)
-            points.push_back(*j);
+        points.insert(points.begin(), tmp.begin(), tmp.end());
         file.close();
     }
-    if (variables.count("maxpoints") > 0) this->max_points = variables["maxpoints"].as<int>();
-    this->space = new Points(this->max_points, NULL, this->debug);
+
+#ifndef NDEBUG
+    DEBUG(points.size());
     for (std::vector<Point *>::iterator i = points.begin(); i != points.end(); ++i)
-    {
-        Cell *tmp = NULL;
-        if ((tmp = this->space->AddPoint(*i)) != this->space)
-        {
-            DEBUG("Tree has split!");
-            delete this->space;
-            this->space = tmp;
-        }
-    }
+        DEBUG(**i);
+#endif
+
+    this->space = new OctTree(this->calculateRegion(points), variables["distance"].as<double>(), this->verbose, this->debug);
+    for (std::vector<Point *>::iterator i = points.begin(); i != points.end(); ++i)
+        this->space->Insert(**i);
 
 #ifndef NDEBUG
     if (variables.count("region") > 0) DEBUG(variables["region"].as<std::string>());
 #endif
     this->region = (variables.count("region") > 0) ? regionOfInterest(variables["region"].as<std::string>(), description) : this->emptyRegionOfInterest();
+
+    if (variables.count("numsteps") > 0) this->nsteps = variables["numsteps"].as<int>();
+}
+
+std::vector<std::vector<double> > Embodied::calculateRegion(const std::vector<Point *> & points)
+{
+    using namespace boost;
+    using namespace std;
+
+    vector<double> minimums, maximums;
+
+#ifndef NDEBUG
+    DEBUG(std::numeric_limits<double>::max());
+    DEBUG(std::numeric_limits<double>::min());
+#endif
+
+    for (int i = 0; i < 3; ++i)
+    {
+        minimums.push_back(std::numeric_limits<double>::max());
+        maximums.push_back(std::numeric_limits<double>::min());
+    }
+
+    for (std::vector<Point *>::const_iterator i = points.begin(); i != points.end(); ++i)
+        for (int j = 0; j < 3; ++j)
+        {
+            double tmp;
+            if ((tmp = (*i)->GetPosition()[j]) < minimums[j]) minimums[j] = tmp;
+            if ((tmp = (*i)->GetPosition()[j]) > maximums[j]) maximums[j] = tmp;
+        }
+
+    vector<vector<double> > ret;
+    ret.push_back(minimums);
+    ret.push_back(maximums);
+    return ret;
 }
 
 std::vector<std::vector<double *> > Embodied::emptyRegionOfInterest()
@@ -153,13 +185,18 @@ std::vector<std::vector<double *> > Embodied::regionOfInterest(const std::string
 
 std::vector<Point *> Embodied::readPoints(std::istream & in)
 {
-    Point point(0, 0, 0, 0);
+    using namespace boost;
+
     std::vector<Point *> tmp;
-    while (!in.eof())
+
+    do
     {
-        in >> point;
-        tmp.push_back(&point);
+        Point * point = new Point(0, 0, 0, 0);
+        in >> *point;
+        tmp.push_back(point);
     }
+    while (!in.eof());
+
     return tmp;
 }
 
@@ -171,8 +208,9 @@ boost::program_options::variables_map Embodied::parseOptions(int argc, char *arg
     ("debug,d", "Turn on the debugging output.")
     ("verbose,v", "Turn on verbose output.")
     ("filename,f", value<std::vector<std::string> >(), "The FILENAMEs to read points from.")
-    ("maxpoints,m", value<int>(), "The MAXIMUM points in a leaf node.")
     ("output,o", value<std::string>(), "The filename to OUTPUT to.")
+    ("numsteps,n", value<int>(), "The number of steps per dimension (granularity) in the resultant potential calculation.")
+    ("distance,a", value<double>(), "Nodes will be approximated if their distance from the current point being calculated is greater than 3a^2/4.")
     ("region,r", value<std::string>(), "The REGION of interest.  This is specified as ((x1, y1), (x2, y2)), where x1 can equal x2 and y1 can equal y2.  Also, any of the values passed may be represented by a '.' to indicate that this bound should be determined from the positions of the Points.")
     ;
 
@@ -187,8 +225,9 @@ boost::program_options::variables_map Embodied::parseOptions(int argc, char *arg
 
 std::vector<std::vector<std::vector<double> > > Embodied::CalculatePotential()
 {
-    if (!space) throw EmbodiedError("We are outside of space!  Where are we?");
-    return space->CalculatePotential(this->region);
+    std::vector<std::vector<std::vector<double> > > ret;
+    ret = this->space->CalculatePotential(this->region, this->nsteps);
+    return ret;
 }
 
 EmbodiedError::EmbodiedError(const std::string &message)
