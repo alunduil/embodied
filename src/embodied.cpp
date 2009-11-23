@@ -24,6 +24,7 @@
 #include <cstdio>
 #include <limits>
 #include <boost/lexical_cast.hpp>
+#include <cmath>
 
 #include "../include/embodied.h"
 #include "../include/output.h"
@@ -65,7 +66,6 @@ Embodied::Embodied(int argc, char *argv[])
     if (variables.count("filename") < 1) points = this->readPoints(std::cin);
     for (int i = 0; i < variables.count("filename"); ++i)
     {
-        DEBUG(variables["filename"].as<std::vector<std::string> >()[i]);
         std::ifstream file(variables["filename"].as<std::vector<std::string> >()[i].c_str());
         std::vector<Point *> tmp = this->readPoints(file);
         points.insert(points.begin(), tmp.begin(), tmp.end());
@@ -78,13 +78,12 @@ Embodied::Embodied(int argc, char *argv[])
         DEBUG(**i);
 #endif
 
-    this->space = new OctTree(this->calculateRegion(points), variables["distance"].as<double>(), this->verbose, this->debug);
+    double dist = (variables.count("distance") > 0) ? variables["distance"].as<double>() : (4.0/3.0)*std::sqrt(std::numeric_limits<double>::max());
+
+    this->space = new OctTree(this->calculateRegion(points), dist, this->verbose, this->debug);
     for (std::vector<Point *>::iterator i = points.begin(); i != points.end(); ++i)
         this->space->Insert(**i);
 
-#ifndef NDEBUG
-    if (variables.count("region") > 0) DEBUG(variables["region"].as<std::string>());
-#endif
     this->region = (variables.count("region") > 0) ? regionOfInterest(variables["region"].as<std::string>(), description) : this->emptyRegionOfInterest();
 
     if (variables.count("numsteps") > 0) this->nsteps = variables["numsteps"].as<int>();
@@ -151,19 +150,8 @@ std::vector<std::vector<double *> > Embodied::regionOfInterest(const std::string
     boost::regex expression("\\(\\W*?\\(\\W*?(-?\\d+(?:\\.\\d+)?|\\.)\\W*?,\\W*?(-?\\d+(?:\\.\\d+)?|\\.)\\W*?,\\W*?(-?\\d+(?:\\.\\d+)?|\\.)\\W*?\\)\\W*?,\\W*?\\(\\W*?(-?\\d+(?:\\.\\d+)?|\\.)\\W*?,\\W*?(-?\\d+(?:\\.\\d+)?|\\.)\\W*?,\\W*?(-?\\d+(?:\\.\\d+)?|\\.)\\W*?\\)\\W*?\\)");
     boost::match_results<std::string::const_iterator> what;
     boost::match_flag_type flags = boost::match_default;
-#ifndef NDEBUG
-    DEBUG(expression);
-#endif
     if (boost::regex_search(roi.begin(), roi.end(), what, expression, flags))
     {
-#ifndef NDEBUG
-        DEBUG(what[1]);
-        DEBUG(what[2]);
-        DEBUG(what[3]);
-        DEBUG(what[4]);
-        DEBUG(what[5]);
-        DEBUG(what[6]);
-#endif
         tmp[0][0] = (what[1].str() == ".") ? NULL : new double(boost::lexical_cast<double>(what[1]));
         tmp[0][1] = (what[2].str() == ".") ? NULL : new double(boost::lexical_cast<double>(what[2]));
         tmp[0][2] = (what[3].str() == ".") ? NULL : new double(boost::lexical_cast<double>(what[3]));
@@ -172,14 +160,7 @@ std::vector<std::vector<double *> > Embodied::regionOfInterest(const std::string
         tmp[1][2] = (what[6].str() == ".") ? NULL : new double(boost::lexical_cast<double>(what[6]));
     }
     else throw EmbodiedArgumentError("Improperly formed region string!", description);
-#ifndef NDEBUG
-    DEBUG(tmp[0][0]);
-    DEBUG(tmp[0][1]);
-    DEBUG(tmp[0][2]);
-    DEBUG(tmp[1][0]);
-    DEBUG(tmp[1][1]);
-    DEBUG(tmp[1][2]);
-#endif
+
     return tmp;
 }
 
@@ -194,8 +175,7 @@ std::vector<Point *> Embodied::readPoints(std::istream & in)
         Point * point = new Point(0, 0, 0, 0);
         in >> *point;
         tmp.push_back(point);
-    }
-    while (!in.eof());
+    } while (!in.eof());
 
     return tmp;
 }

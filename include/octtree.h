@@ -51,7 +51,6 @@ class OctTree
         struct Node
         {
             Point * CenterApproximation;
-            double Density;
             Node * Children[8];
             int ChildCount;
             std::vector<std::vector<double> > Region;
