@@ -57,7 +57,7 @@ std::string OctTree::print(Node * node)
 
     ret += "Depth: " + lexical_cast<string>(++depth);
     ret += " Total: " + lexical_cast<string>(++count);
-    ret += " ( m: " + lexical_cast<string>(node->CenterApproximation->GetMass()) + ", p: " + lexical_cast<string>(node->Density);
+    ret += " ( point: " + lexical_cast<string>(*node->CenterApproximation);
     ret += ", r: < " + lexical_cast<string>(node->Region[0][0]) + ", " + lexical_cast<string>(node->Region[0][1]) + ", " + lexical_cast<string>(node->Region[0][2]) + " >";
     ret += " :: < " + lexical_cast<string>(node->Region[1][0]) + ", " + lexical_cast<string>(node->Region[1][1]) + ", " + lexical_cast<string>(node->Region[1][2]) + " > )\n";
     for (int i = 0; i < 8; ++i) if (node->Children[i]) ret += this->print(node->Children[i]);
@@ -71,14 +71,14 @@ double OctTree::distance(size_t dim, double * k, double * l)
     double ret = 0.0;
 
     for (int i = 0; i < dim; ++i)
-        ret = std::pow(k[i] - l[i], 2);
+        ret += std::pow(k[i] - l[i], 2);
 
     return std::sqrt(ret);
 }
 
 double OctTree::magnitude(size_t dim, double * k)
 {
-    double total = 0;
+    double total = 0.0;
 
     for (int i = 0; i < dim; ++i)
         total += std::pow(k[i], 2);
@@ -93,7 +93,16 @@ double OctTree::integrand(size_t dim, double * point, double * mass)
     double *r = point; //!< The position we are calculating at.
     double *r_o = mass; //!< The position of the body.
 
-    double rdot = cblas_ddot(dim, r, 0, r_o, 0);
+    double rdot = cblas_ddot(dim, r, 1, r_o, 1);
+#ifndef NDEBUG
+    DEBUG(r[0]);
+    DEBUG(r[1]);
+    DEBUG(r[2]);
+    DEBUG(r_o[0]);
+    DEBUG(r_o[1]);
+    DEBUG(r_o[2]);
+    DEBUG(rdot);
+#endif
     double mag_r = this->magnitude(dim, r);
     double mag_r_o = this->magnitude(dim, r_o);
 
@@ -120,9 +129,6 @@ double OctTree::calculatePotential(size_t dim, double * point, Node * n)
 {
     double ret = 0.0;
     bool opened = false;
-#ifndef NDEBUG
-    static int opens = 0;
-#endif
 
     assert(n->CenterApproximation->GetPosition().size() == dim);
 
@@ -131,23 +137,23 @@ double OctTree::calculatePotential(size_t dim, double * point, Node * n)
         mass[i] = n->CenterApproximation->GetPosition()[i];
 
 #ifndef NDEBUG
-    DEBUG((3.0/4.0)*std::pow(this->dist, 2));
-    DEBUG(this->distance(dim, point, mass));
+    DEBUG(Point(0, point[0], point[1], point[2]));
+    DEBUG(*n->CenterApproximation);
 #endif
-    if (this->distance(dim, point, mass) <= (3.0 / 4.0)*std::pow(this->dist, 2)) //!< Open the node.
+
+    if (this->distance(dim, point, mass) < (3.0 / 4.0)*std::pow(this->dist, 2)) //!< Open the node.
         for (int i = 0; i < 8; ++i)
             if (n->Children[i])
             {
                 ret += this->calculatePotential(dim, point, n->Children[i]);
                 opened = true;
-#ifndef NDEBUG
-                ++opens;
-#endif
             }
-    if (!opened) ret = n->CenterApproximation->GetMass() * this->integrand(dim, point, mass);
+    if (!opened) ret = n->CenterApproximation->GetMass() * (1.0 / this->distance(dim, point, mass));
+    /** @note Future use? this->integrand(dim, point, mass) */
 
 #ifndef NDEBUG
-    DEBUG(opens);
+    DEBUG(opened);
+    DEBUG(ret);
 #endif
 
     return ret;
@@ -163,35 +169,47 @@ std::vector<std::vector<std::vector<double> > > OctTree::CalculatePotential(std:
     DEBUG("\n" + this->print(this->root));
 #endif
 
-    for (int i = 0; i < steps; ++i)
+    for (int i = 0; i < steps + 1; ++i)
         innermost.push_back(0.0);
-    for (int i = 0; i < steps; ++i)
+    for (int i = 0; i < steps + 1; ++i)
         inner.push_back(innermost);
-    for (int i = 0; i < steps; ++i)
+    for (int i = 0; i < steps + 1; ++i)
         potential.push_back(inner);
 
-    double lowers[3];
+    double lowers[3], uppers[3], step_size[3], current[3];
     for (int i = 0; i < 3; ++i)
-        lowers[i] = (region[0][i]) ? *region[0][i] : root->Region[0][i];
-
-    double currents[3];
-
-    for (int i = 0; i < steps; ++i)
     {
-        currents[0] = lowers[0] + i * (((region[1][0]) ? *region[1][0] : root->Region[1][0]) - lowers[0]) / steps;
-        for (int j = 0; j < steps; ++j)
-        {
-            currents[1] = lowers[1] + j * (((region[1][1]) ? *region[1][1] : root->Region[1][1]) - lowers[1]) / steps;
-            for (int k = 0; k < steps; ++k)
+        lowers[i] = (region[0][i]) ? *region[0][i] : root->Region[0][i];
+        uppers[i] = (region[1][i]) ? *region[1][i] : root->Region[1][i];
+        step_size[i] = (uppers[i] - lowers[i]) / steps;
+        current[i] = lowers[i];
+        #ifndef NDEBUG
+        DEBUG(lowers[i]);
+        DEBUG(uppers[i]);
+        DEBUG(step_size[i]);
+        DEBUG(steps);
+        DEBUG(current[i]);
+        #endif
+    }
+
+    for (int i = 0; i < steps + 1; ++i, current[0] += step_size[0])
+        for (int j = 0; j < steps + 1; ++j, current[1] += step_size[1])
+            for (int k = 0; k < steps + 1; ++k, current[2] += step_size[2])
             {
-                currents[2] = lowers[2] + k * (((region[1][2]) ? *region[1][2] : root->Region[1][2]) - lowers[2]) / steps;
                 /**
                  * \phi(\vec(r)) = M_i * 1/(|current - point_i|)
                  */
-                potential[i][j][k] = this->calculatePotential(3, currents, this->root);
+#ifndef NDEBUG
+                DEBUG(Point(0, current[0], current[1], current[2]));
+#endif
+                potential[i][j][k] = this->calculatePotential(3, current, this->root);
+#ifndef NDEBUG
+                DEBUG(i);
+                DEBUG(j);
+                DEBUG(k);
+                DEBUG(potential[i][j][k]);
+#endif
             }
-        }
-    }
 
     return potential;
 }
@@ -205,9 +223,14 @@ void OctTree::insert(const Point & point, Node * n)
 {
     using namespace boost;
 
-#ifndef NDEBUG
-    VERBOSE("Adding point with mass, " + lexical_cast<std::string>(point.GetMass()) + ", to node: " + lexical_cast<std::string>(n));
-#endif
+    if (point.GetPosition()[0] == n->CenterApproximation->GetPosition()[0]
+            && point.GetPosition()[1] == n->CenterApproximation->GetPosition()[1]
+            && point.GetPosition()[2] == n->CenterApproximation->GetPosition()[2]
+       ) //!< Check if we're inserting a mass on top of a previous mass.
+    {
+        n->CenterApproximation->SetMass(n->CenterApproximation->GetMass() + point.GetMass());
+        return;
+    }
 
     for (int i = 0; i < 8; ++i)
     {
@@ -215,20 +238,26 @@ void OctTree::insert(const Point & point, Node * n)
         {
             if (n->Children[i])
             {
-                VERBOSE("Recursive Insert of a point!");
+                VERBOSE("Recursive Insert of a point! " + lexical_cast<std::string>(point));
                 this->insert(point, n->Children[i]);
+                VERBOSE("End of recursive call!");
             }
             else
             {
-                VERBOSE("Inserting a point locally!");
+                VERBOSE("Inserting a point locally! " + lexical_cast<std::string>(point));
                 n->Children[i] = this->addPoint(point);
                 n->Children[i]->Region = this->subRegion(n->Region, i);
-                ++n->ChildCount;
-                if (n->ChildCount == 1 && n->CenterApproximation->GetMass() != 0)
+                if (n->CenterApproximation->GetMass() != 0 && n->ChildCount++ == 1)
                     this->insert(*n->CenterApproximation, n);
             }
         }
     }
+
+#ifndef NDEBUG
+    DEBUG(*n->CenterApproximation);
+#endif
+
+    n->CenterApproximation->SetMass(n->CenterApproximation->GetMass() + point.GetMass());
 
     double coordinates[3];
     for (int i = 0; i < 3; ++i)
@@ -236,14 +265,17 @@ void OctTree::insert(const Point & point, Node * n)
         coordinates[i] = 0;
         for (int j = 0; j < 8; ++j)
         {
-            if (!n->Children[j]) break;
+            if (!n->Children[j]) continue;
             double tmp = n->Children[j]->CenterApproximation->GetPosition()[i];
-            coordinates[i] += (n->Children[j]->CenterApproximation->GetMass() / n->CenterApproximation->GetMass()) * tmp;
+            coordinates[i] += n->Children[j]->CenterApproximation->GetMass() * tmp;
         }
+        coordinates[i] /= n->CenterApproximation->GetMass();
     }
     n->CenterApproximation->SetPosition(coordinates[0], coordinates[1], coordinates[2]);
-    n->CenterApproximation->SetMass(n->CenterApproximation->GetMass() + point.GetMass());
-    n->Density = n->CenterApproximation->GetMass() / this->volume(n->Region);
+
+#ifndef NDEBUG
+    DEBUG(*n->CenterApproximation);
+#endif
 }
 
 std::vector<std::vector<double> > OctTree::subRegion(const std::vector<std::vector<double> > & region, const int & i)
