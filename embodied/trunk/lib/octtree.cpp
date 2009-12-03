@@ -31,7 +31,7 @@
 #include "../include/output.h"
 
 OctTree::OctTree(const std::vector<std::vector<double> > & region, const double & distance, const bool & verbose, const bool & debug)
-        : root(NULL), verbose(verbose), debug(debug), dist(distance)
+        : root(NULL), debug(debug), verbose(verbose), dist(distance)
 {
     using namespace boost;
 
@@ -70,7 +70,7 @@ double OctTree::distance(size_t dim, double * k, double * l)
 {
     double ret = 0.0;
 
-    for (int i = 0; i < dim; ++i)
+    for (unsigned int i = 0; i < dim; ++i)
         ret += std::pow(k[i] - l[i], 2);
 
     return std::sqrt(ret);
@@ -80,7 +80,7 @@ double OctTree::magnitude(size_t dim, double * k)
 {
     double total = 0.0;
 
-    for (int i = 0; i < dim; ++i)
+    for (unsigned int i = 0; i < dim; ++i)
         total += std::pow(k[i], 2);
 
     return std::sqrt(total);
@@ -133,7 +133,7 @@ double OctTree::calculatePotential(size_t dim, double * point, Node * n)
     assert(n->CenterApproximation->GetPosition().size() == dim);
 
     double mass[dim];
-    for (int i = 0; i < dim; ++i)
+    for (unsigned int i = 0; i < dim; ++i)
         mass[i] = n->CenterApproximation->GetPosition()[i];
 
 #ifndef NDEBUG
@@ -183,13 +183,13 @@ std::vector<std::vector<std::vector<double> > > OctTree::CalculatePotential(std:
         uppers[i] = (region[1][i]) ? *region[1][i] : root->Region[1][i];
         step_size[i] = (uppers[i] - lowers[i]) / steps;
         current[i] = lowers[i];
-        #ifndef NDEBUG
+#ifndef NDEBUG
         DEBUG(lowers[i]);
         DEBUG(uppers[i]);
         DEBUG(step_size[i]);
         DEBUG(steps);
         DEBUG(current[i]);
-        #endif
+#endif
     }
 
     for (int i = 0; i < steps + 1; ++i, current[0] += step_size[0])
@@ -202,11 +202,9 @@ std::vector<std::vector<std::vector<double> > > OctTree::CalculatePotential(std:
 #ifndef NDEBUG
                 DEBUG(Point(0, current[0], current[1], current[2]));
 #endif
-                potential[i][j][k] = this->calculatePotential(3, current, this->root);
+                potential[i][j][k] = -this->calculatePotential(3, current, this->root);
 #ifndef NDEBUG
-                DEBUG(i);
-                DEBUG(j);
-                DEBUG(k);
+                DEBUG(Point(0, i, j, k));
                 DEBUG(potential[i][j][k]);
 #endif
             }
@@ -223,14 +221,10 @@ void OctTree::insert(const Point & point, Node * n)
 {
     using namespace boost;
 
-    if (point.GetPosition()[0] == n->CenterApproximation->GetPosition()[0]
-            && point.GetPosition()[1] == n->CenterApproximation->GetPosition()[1]
-            && point.GetPosition()[2] == n->CenterApproximation->GetPosition()[2]
-       ) //!< Check if we're inserting a mass on top of a previous mass.
-    {
-        n->CenterApproximation->SetMass(n->CenterApproximation->GetMass() + point.GetMass());
-        return;
-    }
+#ifndef NDEBUG
+    DEBUG(n);
+    DEBUG(n->ChildCount);
+#endif
 
     for (int i = 0; i < 8; ++i)
     {
@@ -247,9 +241,17 @@ void OctTree::insert(const Point & point, Node * n)
                 VERBOSE("Inserting a point locally! " + lexical_cast<std::string>(point));
                 n->Children[i] = this->addPoint(point);
                 n->Children[i]->Region = this->subRegion(n->Region, i);
-                if (n->CenterApproximation->GetMass() != 0 && n->ChildCount++ == 1)
+#ifndef NDEBUG
+                DEBUG(n->ChildCount);
+                DEBUG(n->CenterApproximation->GetMass());
+#endif
+                if (n->ChildCount++ == 0 && n->CenterApproximation->GetMass() != 0)
+                {
+                    VERBOSE("Inserting self into self!");
                     this->insert(*n->CenterApproximation, n);
+                }
             }
+            break;
         }
     }
 
@@ -257,7 +259,10 @@ void OctTree::insert(const Point & point, Node * n)
     DEBUG(*n->CenterApproximation);
 #endif
 
-    n->CenterApproximation->SetMass(n->CenterApproximation->GetMass() + point.GetMass());
+    double mass = 0.0;
+    for (int i = 0; i < 8; ++i)
+        mass += (n->Children[i]) ? n->Children[i]->CenterApproximation->GetMass() : 0.0;
+    n->CenterApproximation->SetMass(mass);
 
     double coordinates[3];
     for (int i = 0; i < 3; ++i)
@@ -275,6 +280,7 @@ void OctTree::insert(const Point & point, Node * n)
 
 #ifndef NDEBUG
     DEBUG(*n->CenterApproximation);
+    DEBUG('\n' + this->print(this->root));
 #endif
 }
 
@@ -374,6 +380,9 @@ bool OctTree::contained(const Point & point, const std::vector<std::vector<doubl
 
     double tmp;
 
+    /**
+     * @note Why does including either boundary change the results?
+     */
     for (int i = 0; i < 3; ++i)
         if ((tmp = point.GetPosition()[i]) < region[0][i] || tmp > region[1][i])
             return false;
