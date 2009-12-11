@@ -53,6 +53,8 @@ std::string OctTree::print(Node * node)
     static int depth = -1;
     static int count = -1;
 
+    if (node == this->root) count = -1;
+
     string ret;
 
     ret += "Depth: " + lexical_cast<string>(++depth);
@@ -129,6 +131,10 @@ double OctTree::calculatePotential(size_t dim, double * point, Node * n)
 {
     double ret = 0.0;
     bool opened = false;
+#ifndef NDEBUG
+    static int opens;
+    if (n == this->root) opens = 0;
+#endif
 
     assert(n->CenterApproximation->GetPosition().size() == dim);
 
@@ -139,17 +145,32 @@ double OctTree::calculatePotential(size_t dim, double * point, Node * n)
 #ifndef NDEBUG
     DEBUG(Point(0, point[0], point[1], point[2]));
     DEBUG(*n->CenterApproximation);
+    DEBUG((3.0 / 4.0)*std::pow(this->dist, 2));
+    DEBUG(this->distance(dim, point, mass));
 #endif
 
     if (this->distance(dim, point, mass) < (3.0 / 4.0)*std::pow(this->dist, 2)) //!< Open the node.
+    {
         for (int i = 0; i < 8; ++i)
+        {
+#ifndef NDEBUG
+            DEBUG(n->Children[i]);
+#endif
             if (n->Children[i])
             {
                 ret += this->calculatePotential(dim, point, n->Children[i]);
                 opened = true;
+#ifndef NDEBUG
+                DEBUG(++opens);
+#endif
             }
+        }
+    }
     if (!opened) ret = n->CenterApproximation->GetMass() * (1.0 / this->distance(dim, point, mass));
     /** @note Future use? this->integrand(dim, point, mass) */
+#ifndef NDEBUG
+    if (!opened) VERBOSE("!opened: " + boost::lexical_cast<std::string>(Point(0, point[0], point[1], point[2])));
+#endif
 
 #ifndef NDEBUG
     DEBUG(opened);
